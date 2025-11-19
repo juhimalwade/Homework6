@@ -1,0 +1,95 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# Homework6
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+## Overview
+
+**Homework6** provides an S4 class implementation for sparse numeric
+vectors in R. Sparse vectors store only non-zero values and their
+positions. This makes them highly memory-efficient for vectors
+containing many zeros. Use cases for this class include text mining,
+machine learning, and scientific computing where data is predominantly
+sparse.
+
+## Installation
+
+You can install the development version of Homework6 from GitHub:
+
+``` r
+devtools::install_github("juhimalwade/Homework6")
+```
+
+## The sparse_numeric Class
+
+The package implements an S4 class called `sparse_numeric` with three
+slots:
+
+- **value**: A numeric vector containing only the non-zero values
+- **pos**: An integer vector of indices indicating positions of non-zero
+  values
+- **length**: An integer representing the length of the vector,
+  including non-zero and zero values.
+
+## Core Functionality
+
+### Creating Sparse Vectors
+
+Sparse vectors can be created by coercing standard numeric vectors using
+the `as()` function. You can also construct sparse vectors directly
+using the `new()` function and input the values, positions, and length.
+
+### Arithmetic Operations
+
+- **Addition (+)**: Adds two sparse vectors
+- **Subtraction (-)**: Subtracts one sparse vector from another
+- **Multiplication (\*)**: Performs element-wise multiplication
+
+All operations maintain the sparse representation.
+
+### Vector Operations
+
+- **sparse_crossprod**: Computes the dot product between two sparse
+  vectors by only multiplying overlapping non-zero elements
+- **mean**: Calculates the mean considering the full vector length,
+  which includes implicit zeros
+- **norm**: Computes the Euclidean (L2) norm from stored non-zero values
+- **standardize**: Scales the vector to have mean zero and unit variance
+
+### Type Coercion
+
+The package provides conversion between sparse and dense
+representations:
+
+- Convert dense numeric vectors to sparse format with
+  `as(vector, "sparse_numeric")`
+- Convert sparse vectors back to dense format with
+  `as.numeric(sparse_vector)`
+- The `as.numeric()` method reconstructs the full vector with zeros in
+  appropriate positions
+
+### Visualization
+
+The `plot()` method allows visual comparison of two sparse vectors. It
+displays the non-zero positions and values for both vectors on a single
+plot, using different colors to distinguish between them. This is useful
+for understanding the structure and overlap of sparse data.
+
+### Display Methods
+
+The `show()` method provides a clean display of sparse vectors, showing:
+
+- The total length of the vector
+- Positions that contain non-zero values
+- The actual values at those positions
+
+## License
+
+MIT License
+
+## Author
+
+Juhi Malwade, <juhi.malwade@utexas.edu>

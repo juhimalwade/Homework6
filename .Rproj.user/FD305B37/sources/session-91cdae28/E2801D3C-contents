@@ -1,0 +1,246 @@
+## HW5 Class/Methods
+
+setClass(
+    Class = "sparse_numeric",
+    slots = c(
+        value = "numeric",
+        pos = "integer",
+        length = "integer"
+    )
+)
+
+#Validity Method
+
+setValidity("sparse_numeric", function(object) {
+  # Check that values and positions have one-to-one relationship
+  if (length(object@value) != length(object@pos)) {
+    return("Not valid")
+  }
+  
+  # Check that all positions are positive integers
+  if (any(object@pos <= 0)) {
+    return("Not valid")
+  }
+  
+  # Check for duplicate positions
+  if (any(duplicated(object@pos))) {
+    return("Not valid")
+  }
+  
+  # Check that length is large enough
+  if (length(object@value) > object@length) {
+    return("Not valid")
+  }
+  TRUE
+})
+
+#Coercion methods
+setAs("numeric", "sparse_numeric", function(from) {
+  index_nonzero = which(from != 0)
+  new("sparse_numeric",
+      value = from[index_nonzero],
+      pos = as.integer(index_nonzero),
+      length = as.integer(length(from)))
+})
+
+setAs("sparse_numeric", "numeric", function(from) {
+  x = numeric(from@length)
+  if (length(from@pos) > 0)
+    x[from@pos] = from@value
+  x
+})
+
+#Generic
+setGeneric("sparse_add", function(x, y, ...) standardGeneric("sparse_add"))
+setGeneric("sparse_sub", function(x, y, ...) standardGeneric("sparse_sub"))
+setGeneric("sparse_mult", function(x, y, ...) standardGeneric("sparse_mult"))
+setGeneric("sparse_crossprod", function(x, y, ...) standardGeneric("sparse_crossprod"))
+setGeneric("mean", function(x, ...) standardGeneric("mean"))
+setGeneric("norm", function(x, ...) standardGeneric("norm"))
+setGeneric("standardize", function(x, ...) standardGeneric("standardize"))
+
+setMethod("as.numeric", "sparse_numeric", function(x, ...) {
+  as(x, "numeric")
+})
+
+
+setMethod("sparse_add",
+          signature(x = "sparse_numeric", y = "sparse_numeric"),
+          function(x, y) {
+            
+            if (x@length != y@length)
+              stop("Both sparse vectors must be the same length.")
+            
+            # combine all positions and ensure they are unique]
+            pos_all = unique(c(x@pos, y@pos)) #vector of all positions with non-zero values 
+            pos_all = pos_all[order(pos_all)] #sort them
+            
+            # result vector
+            combined_vals <- numeric(length(pos_all))
+            
+            # add contributions from x and y
+            if (length(x@value)) 
+              combined_vals[match(x@pos, pos_all)] <- combined_vals[match(x@pos, pos_all)] + x@value
+            
+            if (length(y@value)) 
+              combined_vals[match(y@pos, pos_all)] <- combined_vals[match(y@pos, pos_all)] + y@value
+            
+            # remove zeroes
+            valid_idx = combined_vals != 0
+            
+            # return new sparse numeric object
+            new("sparse_numeric",
+                value = combined_vals[valid_idx],
+                pos = as.integer(pos_all[valid_idx]),
+                length = x@length)
+          })
+
+
+setMethod("+", c("sparse_numeric", "sparse_numeric"),
+          function(e1, e2) sparse_add(e1, e2))
+
+setMethod("sparse_sub",
+          signature(x = "sparse_numeric", y = "sparse_numeric"),
+          function(x, y) {
+            
+            if (x@length != y@length)
+              stop("Both sparse vectors must be the same length.")
+            
+            # combine all positions and ensure they are unique
+            pos_all = unique(c(x@pos, y@pos)) #vector of all positions with non-zero values 
+            pos_all = pos_all[order(pos_all)] #sort them
+            
+            # result vector
+            combined_vals <- numeric(length(pos_all))
+            
+            # add contributions from x and subtract contributions from y
+            if (length(x@value)) 
+              combined_vals[match(x@pos, pos_all)] <- combined_vals[match(x@pos, pos_all)] + x@value
+            
+            if (length(y@value)) 
+              combined_vals[match(y@pos, pos_all)] <- combined_vals[match(y@pos, pos_all)] - y@value
+            
+            # remove zeroes
+            valid_idx = combined_vals != 0
+            
+            # return new sparse numeric object
+            new("sparse_numeric",
+                value = combined_vals[valid_idx],
+                pos = as.integer(pos_all[valid_idx]),
+                length = x@length)
+          })
+
+
+setMethod("-", c("sparse_numeric", "sparse_numeric"),
+          function(e1, e2) sparse_sub(e1, e2))
+
+setMethod("sparse_mult",
+          signature(x = "sparse_numeric", y = "sparse_numeric"),
+          function(x, y) {
+            
+            if (x@length != y@length)
+              stop("Both sparse vectors must be the same length.")
+            
+            same_pos = intersect(x@pos, y@pos)
+            
+            if (length(same_pos) == 0)
+              return(new("sparse_numeric", value = numeric(0),
+                         pos = integer(0), length = x@length))
+            
+            x_values = x@value[match(same_pos, x@pos)]
+            y_values = y@value[match(same_pos, y@pos)]
+            
+            mult = x_values * y_values
+            
+            index_keep = which(mult != 0)
+            
+            new("sparse_numeric",
+                value = mult[index_keep],
+                pos = as.integer(same_pos[index_keep]),
+                length = x@length)
+          })
+
+setMethod("*", c("sparse_numeric", "sparse_numeric"),
+          function(e1, e2) sparse_mult(e1, e2))
+
+setMethod("sparse_crossprod", c("sparse_numeric", "sparse_numeric"),
+          function(x, y, ...) {
+            if (x@length != y@length)
+              stop("Both sparse vectors must be the same length.")
+            same_pos <- intersect(x@pos, y@pos)
+            
+            if (length(same_pos) == 0) 
+              return(0)
+            sum(x@value[match(same_pos, x@pos)] *
+                  y@value[match(same_pos, y@pos)])
+          })
+
+# Mean method
+setMethod("mean", "sparse_numeric", function(x, ...) {
+  sum(x@value) / x@length
+})
+
+#Norm method
+setMethod("norm", "sparse_numeric", function(x, ...) {
+  sqrt(sum(x@value^2))
+})
+
+#Standardize method
+setMethod("standardize", "sparse_numeric", function(x, ...) {
+  
+  n = x@length
+  mu = mean(x)
+  
+  mu_sparse = new("sparse_numeric",
+                  value = rep(mu, n),
+                  pos = as.integer(1:n),
+                  length = n)
+  x_minus_mu = sparse_sub(x, mu_sparse)
+  
+  sd_x = norm(x_minus_mu) / sqrt(n)
+  
+  if (sd_x == 0)
+    stop("Standard deviation is zero")
+  
+  x_std <- sparse_mult(x_minus_mu,
+                       new("sparse_numeric",
+                           value = rep(1/sd_x, n),
+                           pos = as.integer(1:n),
+                           length = n))
+  
+  keep = x_std@value != 0
+  
+  new("sparse_numeric",
+      value = x_std@value[keep],
+      pos   = x_std@pos[keep],
+      length = n)
+})
+
+
+#Show method
+setMethod("show", "sparse_numeric", function(object) {
+  cat("Sparse numeric vector of length", object@length, "\n")
+  if (length(object@pos) == 0) {
+    cat("all elements are zero","\n")
+  } else {
+    cat("Positions that are not zero:", object@pos, "\n")
+    cat("Values at those positions:", object@value, "\n")
+  }
+})
+
+#Plot method
+
+setMethod("plot", c("sparse_numeric", "sparse_numeric"),
+          function(x, y, ...) {
+            plot(x@pos, x@value, col = "blue",
+                 xlab = "index", ylab = "value",
+                 main = "non-zero elements of sparse vectors")
+            points(y@pos, y@value, col = "red")
+            legend("topright", legend = c("x", "y"),
+                   col = c("blue", "red"))
+          })
+
+
+
+
+
